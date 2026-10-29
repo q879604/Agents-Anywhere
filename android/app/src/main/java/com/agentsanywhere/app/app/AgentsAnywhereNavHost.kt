@@ -224,7 +224,10 @@ internal fun AgentsAnywhereNavHost(
             key(paneSessionId) {
                 SessionDetailScreen(
                     navigate = navigate,
-                    onBack = onClearSelectedSession,
+                    onBack = {
+                        onClearSelectedSession()
+                        if (!wideLayout) navigate(AppDestination.Sessions)
+                    },
                     sessionId = selectedSessionId,
                     initialSession = preparedSessionDraft?.previewSession() ?: sessionsState.sessions
                         .asSequence()
@@ -242,6 +245,8 @@ internal fun AgentsAnywhereNavHost(
                     terminalPool = remoteTerminalPool,
                     composerDraftStore = sessionComposerDraftStore,
                     onSessionChanged = onSessionChanged,
+                    sidebarCollapsed = sidebarCollapsed,
+                    onToggleSidebar = if (wideLayout) ({ sidebarCollapsed = !sidebarCollapsed }) else null,
                 )
             }
         }
@@ -294,7 +299,6 @@ internal fun AgentsAnywhereNavHost(
                         sidebar = { homeContent(true) },
                         detail = sessionDetailPane,
                         sidebarCollapsed = sidebarCollapsed,
-                        onToggleSidebar = { sidebarCollapsed = !sidebarCollapsed },
                     )
                 } else {
                     homeContent(false)
@@ -319,7 +323,11 @@ internal fun AgentsAnywhereNavHost(
                     onLoadProjects = onLoadProjects,
                     onCreateProject = onCreateProject,
                 ) }
-                AppDestination.SessionDetail -> sessionDetailPane()
+                AppDestination.SessionDetail -> if (selectedSessionId == null && preparedSessionDraft == null) {
+                    homeContent(false)
+                } else {
+                    sessionDetailPane()
+                }
                 AppDestination.DeviceDetail -> DeviceDetailScreen(
                     navigate = navigate,
                     state = sessionsState,

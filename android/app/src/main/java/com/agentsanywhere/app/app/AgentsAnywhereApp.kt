@@ -17,6 +17,7 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.saveable.listSaver
 import androidx.compose.runtime.setValue
+import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.lifecycle.Lifecycle
@@ -179,6 +180,8 @@ fun AgentsAnywhereApp(
         SessionRealtimeController(realtimeApi, sessionStore, realtimeClientId)
     }
     val currentDestination = AppDestination.valueOf(destinationName)
+    val wideLayout = LocalConfiguration.current.screenWidthDp >=
+        com.agentsanywhere.app.ui.screens.workspace.WIDE_LAYOUT_MIN_WIDTH_DP
     val hasAuthSession = sessionStore.hasAuthSession()
     val updateServerUrl = sessionStore.readServerUrl()
     val updatesAllowed = hasAuthSession && updateServerUrl.isNotBlank() && currentDestination !in setOf(
@@ -530,6 +533,7 @@ fun AgentsAnywhereApp(
         webLoginViewModel = webLoginViewModel,
         appUpdateViewModel = appUpdateViewModel,
         navigate = navigate,
+        onClearSelectedSession = { selectedSessionId = null },
         onRefreshSessions = {
             if (!hasAuthSession || isRefreshingSessions) return@AgentsAnywhereNavHost
             scope.launch {
@@ -553,7 +557,12 @@ fun AgentsAnywhereApp(
         onOpenSession = { session ->
             preparedSessionDraft = null
             selectedSessionId = session.id
-            destinationName = AppDestination.SessionDetail.name
+            // On a tablet the conversation opens inside the split workspace instead of covering it.
+            destinationName = if (wideLayout) {
+                AppDestination.Sessions.name
+            } else {
+                AppDestination.SessionDetail.name
+            }
             if (session.unread) {
                 val request = sessionsState.beginSessionRequest(listOf(session.id))
                 sessionsState = request.state
@@ -849,7 +858,11 @@ fun AgentsAnywhereApp(
         onPrepareSession = { draft ->
             preparedSessionDraft = draft
             selectedSessionId = null
-            destinationName = AppDestination.SessionDetail.name
+            destinationName = if (wideLayout) {
+                AppDestination.Sessions.name
+            } else {
+                AppDestination.SessionDetail.name
+            }
         },
         onPreparedSessionCreated = { session ->
             sessionsState = sessionsState.withPatchedSession(session)

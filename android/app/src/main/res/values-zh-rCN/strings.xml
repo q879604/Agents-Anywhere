@@ -707,4 +707,6 @@
     <string name="announcement_title">公告</string>
     <string name="announcement_published_at">发布于 %1$s</string>
     <string name="announcement_acknowledge">我知道了</string>
+    <string name="workspace_empty_title">选择一个会话</string>
+    <string name="workspace_empty_message">从左侧列表中选择一个会话，或者新建一个。</string>
 </resources>

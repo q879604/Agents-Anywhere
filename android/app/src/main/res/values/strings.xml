@@ -709,4 +709,6 @@
     <string name="announcement_title">Announcement</string>
     <string name="announcement_published_at">Published %1$s</string>
     <string name="announcement_acknowledge">Got it</string>
+    <string name="workspace_empty_title">Pick a conversation</string>
+    <string name="workspace_empty_message">Choose a session from the sidebar, or start a new one.</string>
 </resources>

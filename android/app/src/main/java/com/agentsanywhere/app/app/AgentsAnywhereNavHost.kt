@@ -229,8 +229,14 @@ internal fun AgentsAnywhereNavHost(
                 SessionDetailScreen(
                     navigate = navigate,
                     onBack = {
-                        onClearSelectedSession()
-                        if (!wideLayout) navigate(AppDestination.Sessions)
+                        // Leaving the conversation must be a single navigation step: clearing the
+                        // selection first would swap the outgoing screen to the empty state and
+                        // make the back gesture flash twice.
+                        if (wideLayout) {
+                            onClearSelectedSession()
+                        } else {
+                            navigate(AppDestination.Sessions)
+                        }
                     },
                     sessionId = selectedSessionId,
                     initialSession = preparedSessionDraft?.previewSession() ?: sessionsState.sessions
@@ -327,11 +333,7 @@ internal fun AgentsAnywhereNavHost(
                     onLoadProjects = onLoadProjects,
                     onCreateProject = onCreateProject,
                 ) }
-                AppDestination.SessionDetail -> if (selectedSessionId == null && preparedSessionDraft == null) {
-                    homeContent(false)
-                } else {
-                    sessionDetailPane()
-                }
+                AppDestination.SessionDetail -> sessionDetailPane()
                 AppDestination.DeviceDetail -> DeviceDetailScreen(
                     navigate = navigate,
                     state = sessionsState,

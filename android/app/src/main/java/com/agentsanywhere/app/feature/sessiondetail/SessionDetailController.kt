@@ -13,6 +13,7 @@ import com.agentsanywhere.app.feature.auth.AuthSessionReader
 import com.agentsanywhere.app.feature.sessions.toAgentSession
 import com.agentsanywhere.app.model.AgentDevice
 import com.agentsanywhere.app.model.AgentSession
+import java.io.File
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.async
 import kotlinx.coroutines.coroutineScope
@@ -456,11 +457,18 @@ class SessionDetailController(
     suspend fun uploadAttachments(
         sessionId: String,
         attachments: List<UploadFilePart>,
+        onProgress: ((sent: Long, total: Long) -> Unit)? = null,
     ): Result<List<TimelineAttachment>> {
         return withContext(Dispatchers.IO) {
             runCatching {
                 val auth = authSession()
-                attachmentTransfer.upload(auth.serverUrl, auth.accessToken, sessionId, attachments)
+                attachmentTransfer.upload(
+                    serverUrl = auth.serverUrl,
+                    accessToken = auth.accessToken,
+                    sessionId = sessionId,
+                    attachments = attachments,
+                    onProgress = onProgress,
+                )
             }
         }
     }
@@ -496,11 +504,12 @@ class SessionDetailController(
     suspend fun downloadAttachment(
         sessionId: String,
         attachment: TimelineAttachment,
+        cacheDir: File,
     ): Result<DownloadedAttachment> {
         return withContext(Dispatchers.IO) {
             runCatching {
                 val auth = authSession()
-                attachmentTransfer.download(auth.serverUrl, auth.accessToken, sessionId, attachment)
+                attachmentTransfer.download(auth.serverUrl, auth.accessToken, sessionId, attachment, cacheDir)
             }
         }
     }

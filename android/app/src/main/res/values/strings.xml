@@ -712,4 +712,6 @@
     <string name="announcement_acknowledge">Got it</string>
     <string name="workspace_empty_title">Pick a conversation</string>
     <string name="workspace_empty_message">Choose a session from the sidebar, or start a new one.</string>
+    <string name="workspace_sidebar_collapse">Collapse sidebar</string>
+    <string name="workspace_sidebar_expand">Expand sidebar</string>
 </resources>

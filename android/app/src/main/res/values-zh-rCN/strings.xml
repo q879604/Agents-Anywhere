@@ -710,4 +710,6 @@
     <string name="announcement_acknowledge">我知道了</string>
     <string name="workspace_empty_title">选择一个会话</string>
     <string name="workspace_empty_message">从左侧列表中选择一个会话，或者新建一个。</string>
+    <string name="workspace_sidebar_collapse">收起侧栏</string>
+    <string name="workspace_sidebar_expand">展开侧栏</string>
 </resources>

@@ -533,7 +533,10 @@ fun AgentsAnywhereApp(
         webLoginViewModel = webLoginViewModel,
         appUpdateViewModel = appUpdateViewModel,
         navigate = navigate,
-        onClearSelectedSession = { selectedSessionId = null },
+        onClearSelectedSession = {
+            selectedSessionId = null
+            preparedSessionDraft = null
+        },
         onRefreshSessions = {
             if (!hasAuthSession || isRefreshingSessions) return@AgentsAnywhereNavHost
             scope.launch {

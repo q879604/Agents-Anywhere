@@ -98,6 +98,7 @@ import com.agentsanywhere.app.feature.sessiondetail.TimelineAttachment
 import com.agentsanywhere.app.feature.sessiondetail.TimelineMessage
 import com.agentsanywhere.app.feature.sessiondetail.beginSnapshotLoad
 import com.agentsanywhere.app.feature.attachment.ImageCompressionProfile
+import com.agentsanywhere.app.feature.attachment.VideoCompressor
 import com.agentsanywhere.app.feature.attachment.ImageCompressor
 import com.agentsanywhere.app.feature.sessiondetail.cacheDownloadedAttachment
 import com.agentsanywhere.app.feature.sessiondetail.completeSnapshotLoad
@@ -648,6 +649,43 @@ fun SessionDetailScreen(
         context.persistReadPermissions(uris)
         attachPending(uris.mapNotNull { context.pendingAttachment(it) })
     }
+    val compressedVideoPicker = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.OpenMultipleDocuments(),
+    ) { uris ->
+        val uri = uris.firstOrNull() ?: return@rememberLauncherForActivityResult
+        context.persistReadPermissions(listOf(uri))
+        val pendingAttachment = context.pendingAttachment(uri)
+            ?: return@rememberLauncherForActivityResult
+        if (pendingAttachment.size <= MAX_ATTACHMENT_BYTES) {
+            attachPending(listOf(pendingAttachment))
+            return@rememberLauncherForActivityResult
+        }
+        scope.launch {
+            showError(context.getString(R.string.session_video_compressing))
+            val compressed = VideoCompressor.compress(
+                context = context,
+                uri = uri,
+                name = pendingAttachment.name,
+                sourceSize = pendingAttachment.size,
+            )
+            val file = compressed.file
+            if (file == null) {
+                showError(context.getString(R.string.session_video_compress_failed))
+            } else {
+                attachPending(
+                    listOf(
+                        PendingAttachment(
+                            uri = Uri.fromFile(file),
+                            name = compressed.name,
+                            mediaType = "video/mp4",
+                            size = file.length(),
+                            id = "att_${UUID.randomUUID()}",
+                        ),
+                    ),
+                )
+            }
+        }
+    }
     val audioPicker = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.OpenMultipleDocuments(),
     ) { uris ->
@@ -692,6 +730,14 @@ fun SessionDetailScreen(
     fun openVideoPicker() {
         try {
             videoPicker.launch(arrayOf("video/*"))
+        } catch (_: Exception) {
+            showError(context.getString(R.string.session_video_picker_failed))
+        }
+    }
+
+    fun openCompressedVideoPicker() {
+        try {
+            compressedVideoPicker.launch(arrayOf("video/*"))
         } catch (_: Exception) {
             showError(context.getString(R.string.session_video_picker_failed))
         }
@@ -1974,6 +2020,7 @@ fun SessionDetailScreen(
                                     onPickFile = ::openFilePicker,
                                     onOpenCamera = ::openCamera,
                                     onPickVideo = ::openVideoPicker,
+                                    onPickCompressedVideo = ::openCompressedVideoPicker,
                                     onPickAudio = ::openAudioPicker,
                                     onPasteClipboard = ::pasteFromClipboard,
                                     onPickCompressedPhoto = ::openCompressedPhotoPicker,

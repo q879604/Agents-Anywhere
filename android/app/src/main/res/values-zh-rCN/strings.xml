@@ -727,4 +727,7 @@
     <string name="workspace_empty_message">从左侧列表中选择一个会话，或者新建一个。</string>
     <string name="workspace_sidebar_collapse">收起侧栏</string>
     <string name="workspace_sidebar_expand">展开侧栏</string>
+    <string name="session_attachment_compress_video">压缩视频</string>
+    <string name="session_video_compressing">正在压缩视频…</string>
+    <string name="session_video_compress_failed">视频压缩失败，原文件仍超过上传上限。</string>
 </resources>

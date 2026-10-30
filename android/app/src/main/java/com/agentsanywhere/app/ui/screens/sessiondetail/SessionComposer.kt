@@ -118,6 +118,7 @@ internal fun MessageComposer(
     onPickFile: () -> Unit,
     onOpenCamera: () -> Unit,
     onPickVideo: () -> Unit = {},
+    onPickCompressedVideo: () -> Unit = {},
     onPickAudio: () -> Unit = {},
     onPasteClipboard: () -> Unit = {},
     onPickCompressedPhoto: () -> Unit = {},
@@ -279,6 +280,10 @@ internal fun MessageComposer(
                     onVideo = {
                         showAttachMenu = false
                         onPickVideo()
+                    },
+                    onCompressedVideo = {
+                        showAttachMenu = false
+                        onPickCompressedVideo()
                     },
                     onAudio = {
                         showAttachMenu = false
@@ -848,6 +853,7 @@ private fun AttachmentSourceMenu(
     onCamera: () -> Unit,
     onPhoto: () -> Unit,
     onVideo: () -> Unit,
+    onCompressedVideo: () -> Unit,
     onAudio: () -> Unit,
     onFile: () -> Unit,
     onClipboard: () -> Unit,
@@ -864,6 +870,7 @@ private fun AttachmentSourceMenu(
         AttachmentMenuAction(R.string.session_attachment_photos, R.drawable.ic_attachment_photo_black, onPhoto),
         AttachmentMenuAction(R.string.session_attachment_camera, R.drawable.ic_attachment_camera_black, onCamera),
         AttachmentMenuAction(R.string.session_attachment_video, R.drawable.ic_attachment_video, onVideo),
+        AttachmentMenuAction(R.string.session_attachment_compress_video, R.drawable.ic_attachment_video, onCompressedVideo),
         AttachmentMenuAction(R.string.session_attachment_audio, R.drawable.ic_attachment_audio, onAudio),
         AttachmentMenuAction(R.string.session_attachment_file, R.drawable.ic_attachment_file_black, onFile),
         AttachmentMenuAction(R.string.session_attachment_clipboard, R.drawable.ic_attachment_clipboard, onClipboard),

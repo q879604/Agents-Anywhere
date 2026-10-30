@@ -23,6 +23,8 @@
 
 **Agents Anywhere** 是跨设备的开源 Agent 工作台。连接运行 **Codex、Claude Code 或 DeepSeek Harness** 的工作设备，在桌面、手机和 Web 查看会话、回复请求、管理文件与终端。Agent 在连接的工作设备上执行任务。
 
+> **个人自用版：** 本仓库是 `q879604/Agents-Anywhere` 的个人 fork，保留官方目录和部署方式，并固定了平板/附件/图片预览/待发队列及服务端附件流式与缩略图改动。版本、构建方式、签名和已知限制见[个人自用版维护说明](docs/personal/README.md)。
+
 ## 下载与入口
 
 在工作设备上安装桌面客户端，再通过手机、平板或 Web 访问。Linux 和无图形界面的服务器可使用 Connector CLI 接入。各客户端均可连接 Cloud 或自托管服务。

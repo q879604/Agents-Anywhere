@@ -18,6 +18,16 @@ pyproject.toml  Server dependencies
 run.sh          Local helper that migrates and starts the Server
 ```
 
+### Personal fork changes
+
+The personal snapshot adds streaming attachment upload/download, ETag-aware
+file responses, and WebP thumbnails served by
+`GET /api/v2/sessions/{session_id}/attachments/{file_id}/thumb?w=512`.
+Thumbnail rendering uses `pillow>=11`; it writes a sidecar WebP next to the
+stored blob and does not add a database migration. See
+[docs/personal/README.md](../docs/personal/README.md) for the full snapshot and
+deployment checklist.
+
 ## Run
 
 Install dependencies:

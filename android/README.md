@@ -56,6 +56,16 @@ prevents an in-place update of an installed app signed with another key.
 `local.properties` remains machine-specific and ignored. The manifest allows
 HTTP for local/self-hosted addresses; use HTTPS for public service endpoints.
 
+## Personal build
+
+This fork publishes a personally signed build from `.github/workflows/android-apk.yml`.
+The workflow reads `AA_KEYSTORE_BASE64`, `AA_KEYSTORE_PASSWORD`, `AA_KEY_ALIAS`
+and `AA_KEY_PASSWORD` from Actions secrets, builds debug and release APKs, and
+publishes them as a `v2.1.1-tablet.<run_number>` prerelease. The personal
+certificate differs from the official one, so it cannot update an official
+installation in place. See [docs/personal/README.md](../docs/personal/README.md)
+for the version snapshot, signature, build checklist and known limitations.
+
 ## Application updates
 
 After entering the signed-in app, Android reads the saved server's

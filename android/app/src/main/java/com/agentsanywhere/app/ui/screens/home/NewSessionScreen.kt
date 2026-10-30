@@ -655,10 +655,22 @@ fun NewSessionScreen(
         } else {
             selectedProject
         }
+        // Keep the concrete model/effort selection visible on this screen even if a
+        // catalog reload raced with the last dropdown choice. The selection ID for
+        // an effort already encodes provider, model and reasoning effort.
+        val selectedModelSelection = runtimeSelection.selectedReasoning?.selectionId
+            ?: runtimeSelection.selectedModel?.selectionId
+        val preparedSelections = runtimeSelection.selections.let { current ->
+            if (current.model.isNullOrBlank() && !selectedModelSelection.isNullOrBlank()) {
+                current.copy(model = selectedModelSelection)
+            } else {
+                current
+            }
+        }
         preferenceStore.save(
             connectorId = device.id,
             runtimeId = runtime.id,
-            selections = runtimeSelection.selections,
+            selections = preparedSelections,
         )
         onPrepareSession(
             NewSessionDraft(
@@ -674,7 +686,7 @@ fun NewSessionScreen(
                 runtimeId = runtime.id,
                 runtimeType = runtime.type,
                 runtimeName = runtime.name,
-                selections = runtimeSelection.selections,
+                selections = preparedSelections,
                 attachmentsEnabled = runtimeSelection.canUseAttachments,
             ),
         )

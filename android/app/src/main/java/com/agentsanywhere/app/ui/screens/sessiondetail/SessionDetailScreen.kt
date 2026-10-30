@@ -1040,12 +1040,16 @@ fun SessionDetailScreen(
                         preparedModelOptions = catalog.models
                             .map { it.toRemoteRuntimeModel() }
                             .modelSelectionOptions()
-                        preparedSelections = preparedSelections.copy(
-                            model = preparedModelOptions.validatedSelection(
-                                preparedSelections.model,
-                                defaultWhenMissing = true,
-                            ),
+                        // Keep the selection the user made on the New Session screen. A
+                        // catalog reload must not silently replace an explicit model/effort
+                        // with the runtime default just because the catalog arrived late.
+                        val validated = preparedModelOptions.validatedSelection(
+                            preparedSelections.model,
+                            defaultWhenMissing = preparedSelections.model.isNullOrBlank(),
                         )
+                        if (validated != null || preparedSelections.model.isNullOrBlank()) {
+                            preparedSelections = preparedSelections.copy(model = validated)
+                        }
                     }
                     .onFailure { preparedModelError = it.message ?: context.getString(R.string.session_runtime_model_catalog_failed) }
                 preparedModelLoading = false
@@ -1095,12 +1099,13 @@ fun SessionDetailScreen(
                                     disabledReason = permission.disabledReason,
                                 )
                             }
-                        preparedSelections = preparedSelections.copy(
-                            permission = options.validatedSelection(
-                                preparedSelections.permission,
-                                defaultWhenMissing = true,
-                            ),
+                        val validatedPermission = options.validatedSelection(
+                            preparedSelections.permission,
+                            defaultWhenMissing = preparedSelections.permission.isNullOrBlank(),
                         )
+                        if (validatedPermission != null || preparedSelections.permission.isNullOrBlank()) {
+                            preparedSelections = preparedSelections.copy(permission = validatedPermission)
+                        }
                     }
                     .onFailure { preparedPermissionError = it.message ?: context.getString(R.string.session_runtime_permission_catalog_failed) }
                 preparedPermissionLoading = false

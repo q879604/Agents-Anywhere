@@ -163,6 +163,14 @@ internal class TimelineReadingState {
             return
         }
         if (!following && towardsLatest && list.firstVisibleItemIndex == 0 && list.firstVisibleItemScrollOffset == 0) release()
+        // Once the reader leaves the live bottom (especially after expanding a
+        // tool/reasoning row), never move the list programmatically in response
+        // to streaming revisions. The old anchor-rebase/scrollBy correction ran
+        // after every new call and could jump to a different row when a group
+        // changed shape, which looked exactly like the recorded flashing.
+        // LazyColumn already preserves the visible items; user scrolling owns
+        // the position until an explicit return-to-latest.
+        if (!following) return
         if (following) {
             if (list.firstVisibleItemIndex != 0 || list.firstVisibleItemScrollOffset != 0) {
                 correcting = true

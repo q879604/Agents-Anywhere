@@ -47,6 +47,12 @@ internal fun Modifier.timelineTap(label: String? = null, onTap: () -> Unit): Mod
             while (true) {
                 val event = awaitPointerEvent(PointerEventPass.Initial)
                 val change = event.changes.firstOrNull { it.id == pointerId } ?: break
+                if (change.isConsumed) {
+                    // A parent LazyColumn has taken over this gesture as a
+                    // scroll/fling; never turn its release into an expand tap.
+                    canceled = true
+                    break
+                }
                 if (change.pressed) {
                     travel += (change.position - previous).getDistance()
                     previous = change.position

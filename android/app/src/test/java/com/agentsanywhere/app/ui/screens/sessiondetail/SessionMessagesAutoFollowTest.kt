@@ -1,5 +1,10 @@
 package com.agentsanywhere.app.ui.screens.sessiondetail
 
+import com.agentsanywhere.app.feature.sessiondetail.MessageAuthor
+import com.agentsanywhere.app.feature.sessiondetail.TimelineMessage
+import com.agentsanywhere.app.feature.sessiondetail.TimelineMessageKind
+
+import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
 import org.junit.Test
@@ -30,3 +35,23 @@ class SessionMessagesAutoFollowTest {
         assertFalse(state.groupExpanded("reconnect", listOf("other")))
     }
 }
+
+
+    @Test
+    fun singleToolRowKeepsKeyWhenNewCallJoinsRun() {
+        val reasoning = TimelineMessage(
+            id = "reasoning-1",
+            author = MessageAuthor.Agent,
+            text = "thinking",
+            kind = TimelineMessageKind.Reasoning,
+        )
+        val call = TimelineMessage(
+            id = "tool-2",
+            author = MessageAuthor.Tool,
+            text = "read_image",
+            kind = TimelineMessageKind.ToolCall,
+        )
+        val before = groupTimelineMessages(listOf(reasoning)).single()
+        val after = groupTimelineMessages(listOf(reasoning, call)).single()
+        assertEquals(before.key, after.key)
+    }

@@ -135,7 +135,17 @@ internal sealed interface TimelineRenderItem {
     val messages: List<TimelineMessage>
 
     data class Single(val message: TimelineMessage) : TimelineRenderItem {
-        override val key: String = message.id
+        // Keep the LazyColumn slot stable when a one-item run becomes a
+        // multi-item ToolRun (and vice versa) during streaming. A key based on
+        // the raw message id made Compose dispose/recreate the whole row on
+        // every regroup, which looked like a flash and could reset local UI.
+        override val key: String = when {
+            message.agentCall?.parentItemId?.isNotBlank() == true ->
+                "agent-calls:${message.agentCall.parentItemId}:${message.id}"
+            message.isToolRunItem() -> "tool-run:${message.id}"
+            message.isReconnectError() -> "reconnect:${message.id}"
+            else -> message.id
+        }
         override val messages: List<TimelineMessage> = listOf(message)
     }
 

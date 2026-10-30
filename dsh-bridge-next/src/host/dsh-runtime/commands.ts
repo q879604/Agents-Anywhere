@@ -14,6 +14,15 @@ interface CommandResult {
   message?: string
   result: Record<string, unknown>
 }
+interface NativeCompaction {
+  compactNow(agent: Agent, signal: AbortSignal, sourceCommandId?: string): Promise<{
+    shadowedSeqs: readonly unknown[]
+    shadowedTokenCount: number
+  } | null>
+}
+interface PresetServices {
+  serviceFor(agent: Agent, name: string): unknown
+}
 export interface CommandCapability {
   supported: boolean
   available: boolean
@@ -56,6 +65,48 @@ export class RuntimeCommands {
     return registry
   }
 
+  /**
+   * Some DSH presets compose `command-compact` inside their isolated preset
+   * subtree. `agent.ctx.get('commands')` is the host registry in that case and
+   * never sees the preset registration. The compaction service itself is the
+   * preset-owned contract, so use it as the native fallback instead of sending
+   * `/compact` as a chat message.
+   */
+  private nativeCompaction(agent: Agent): NativeCompaction | undefined {
+    try {
+      const presets = this.ctx.get('agentPresets') as PresetServices | undefined
+      const candidates = [
+        presets?.serviceFor(agent, 'compaction'),
+        (agent as unknown as { ctx?: { get(name: string): unknown } }).ctx?.get('compaction'),
+        this.ctx.get('compaction'),
+      ]
+      for (const candidate of candidates) {
+        const service = candidate as Partial<NativeCompaction> | undefined
+        if (typeof service?.compactNow === 'function') return service as NativeCompaction
+      }
+    } catch {
+      // A preset without an isolated compaction service simply has no native fallback.
+    }
+    return undefined
+  }
+
+  private compactDescriptor() {
+    return {
+      id: 'compact',
+      title: 'compact',
+      description: 'Compact older conversation history',
+      aliases: [],
+      scope: 'session',
+      enabled: true,
+      acceptsArgs: false,
+      metadata: {
+        nativeFallback: true,
+        attachmentsAvailable: false,
+        ui: { kind: 'execute', acceptsMultiline: false, allowedStatuses: [...ONLINE_STATUSES] },
+      },
+    }
+  }
+
   private async agent(id: SessionId, signal: AbortSignal): Promise<Agent> {
     signal.throwIfAborted()
     const agent = await this.configuration.agent(id)
@@ -73,7 +124,7 @@ export class RuntimeCommands {
     if (typeof limit !== 'number' || !Number.isSafeInteger(limit) || limit < 1 || limit > 1000) throw new BridgeError('INVALID_PARAMS', 'The command limit must be an integer between 1 and 1000.')
     const query = typeof params.query === 'string' ? params.query.toLocaleLowerCase() : ''
     const agent = await this.agent(id, signal)
-    return { commands: registry.list(agent)
+    const commands = registry.list(agent)
       .filter(item => item.name === 'compact')
       .filter(item => `${item.name} ${item.description} ${item.input?.hint ?? ''}`.toLocaleLowerCase().includes(query))
       .slice(0, limit).map(item => ({
@@ -86,7 +137,12 @@ export class RuntimeCommands {
           ui: { kind: 'execute', ...(item.input ? { argumentHint: item.input.hint } : {}),
             acceptsMultiline: true, allowedStatuses: [...ONLINE_STATUSES] },
         },
-      })) }
+      }))
+    if (commands.length === 0 && this.nativeCompaction(agent)) {
+      return { commands: query.length === 0 || 'compact compact older conversation history'.includes(query)
+        ? [this.compactDescriptor()].slice(0, limit) : [] }
+    }
+    return { commands }
   }
 
   async execute(id: SessionId, params: Record<string, unknown>, signal: AbortSignal): Promise<CommandResult> {
@@ -114,7 +170,25 @@ export class RuntimeCommands {
     signal.throwIfAborted()
     try {
       const execution = await registry.execute(agent, line, [], signal)
-      if (!execution) return fail('unknown_command', 'This native DSH command is not registered for this Agent. Refresh the command menu.')
+      if (!execution) {
+        const compaction = this.nativeCompaction(agent)
+        if (compaction) {
+          try {
+            const compacted = await compaction.compactNow(agent, signal)
+            const text = compacted === null
+              ? 'No compactable history yet.'
+              : `Compacted ${compacted.shadowedSeqs.length} history items (~${compacted.shadowedTokenCount} tokens).`
+            return {
+              command, ok: true, message: text,
+              result: { kind: 'success', text, executionState: 'accepted' },
+            }
+          } catch {
+            return fail(signal.aborted ? 'command_outcome_unknown' : 'command_error',
+              'DSH native compaction could not be completed. Refresh session state before deciding whether to submit again.')
+          }
+        }
+        return fail('unknown_command', 'This native DSH command is not registered for this Agent. Refresh the command menu.')
+      }
       const result = execution.result
       return { command, ok: result.kind === 'success',
         ...(result.kind === 'error' ? { code: 'command_error' } : {}),

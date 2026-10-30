@@ -1,5 +1,6 @@
 package com.agentsanywhere.app.ui.screens.sessiondetail
 
+import android.net.Uri
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.LinearEasing
 import androidx.compose.animation.core.animateFloat
@@ -100,6 +101,7 @@ import com.agentsanywhere.app.feature.sessiondetail.TimelineMessageKind
 import com.agentsanywhere.app.ui.designsystem.LocalAAColors
 import com.agentsanywhere.app.ui.designsystem.noRippleClickable
 import com.valentinilk.shimmer.shimmer
+import coil3.compose.AsyncImage
 import com.composables.icons.lucide.ArrowDown
 import com.composables.icons.lucide.Bot
 import com.composables.icons.lucide.ChevronDown
@@ -116,6 +118,7 @@ import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.launch
+import java.io.File
 import kotlin.math.abs
 
 private const val SESSION_WELCOME_WRITE_MS = 58L
@@ -258,6 +261,9 @@ internal fun MessageList(
     sessionId: String,
     workspaceRoot: String?,
     controller: SessionDetailController,
+    loadWorkspaceImage: suspend (String) -> Result<File> = {
+        Result.failure(IllegalStateException("Workspace image loading is unavailable."))
+    },
     forceLatestRequest: Int,
     streamLatestRequest: Int,
     workingLabel: String?,
@@ -478,6 +484,7 @@ internal fun MessageList(
                                             sessionId = sessionId,
                                             workspaceRoot = workspaceRoot,
                                             controller = controller,
+                                            loadWorkspaceImage = loadWorkspaceImage,
                                             onPreviewAttachment = onPreviewAttachment,
                                             onOpenAttachment = onOpenAttachment,
                                             onCopyMessage = onCopyMessage,
@@ -494,6 +501,7 @@ internal fun MessageList(
                                         darkMode = darkMode,
                                         workspaceRoot = workspaceRoot,
                                         onOpenFile = onOpenFile,
+                                        loadWorkspaceImage = loadWorkspaceImage,
                                     )
                                     is TimelineRenderItem.Reconnect -> ReconnectGroup(
                                         messages = item.messages,
@@ -788,6 +796,9 @@ private fun ToolRunGroup(
     darkMode: Boolean,
     workspaceRoot: String?,
     onOpenFile: (String) -> Unit = {},
+    loadWorkspaceImage: suspend (String) -> Result<File> = {
+        Result.failure(IllegalStateException("Workspace image loading is unavailable."))
+    },
 ) {
     val colors = LocalAAColors.current
     val primary = colors.ink
@@ -892,6 +903,7 @@ private fun ToolRunGroup(
                             embedded = true,
                             workspaceRoot = workspaceRoot,
                             onOpenFile = onOpenFile,
+                            loadWorkspaceImage = loadWorkspaceImage,
                         )
                     }
                 }
@@ -1157,6 +1169,7 @@ private fun TimelineMessageRow(
     sessionId: String,
     workspaceRoot: String?,
     controller: SessionDetailController,
+    loadWorkspaceImage: suspend (String) -> Result<File>,
     onPreviewAttachment: (TimelineAttachment) -> Unit,
     onOpenAttachment: (TimelineAttachment) -> Unit,
     onCopyMessage: (String) -> Unit,
@@ -1180,6 +1193,7 @@ private fun TimelineMessageRow(
                 darkMode = darkMode,
                     workspaceRoot = workspaceRoot,
                 onOpenFile = onOpenFile,
+                loadWorkspaceImage = loadWorkspaceImage,
                 interaction = interaction,
                 interactionBusy = interaction.noticeId in respondingNoticeIds,
                 actionsDisabled = !canRespondToNotices || respondingNoticeIds.isNotEmpty(),
@@ -1195,6 +1209,7 @@ private fun TimelineMessageRow(
             darkMode = darkMode,
             workspaceRoot = workspaceRoot,
             onOpenFile = onOpenFile,
+            loadWorkspaceImage = loadWorkspaceImage,
             interaction = interaction,
             interactionBusy = interaction?.noticeId?.let { it in respondingNoticeIds } == true,
             actionsDisabled = !canRespondToNotices || respondingNoticeIds.isNotEmpty(),
@@ -1618,6 +1633,9 @@ private fun ToolActivityCard(
     embedded: Boolean = false,
     workspaceRoot: String? = null,
     onOpenFile: (String) -> Unit = {},
+    loadWorkspaceImage: suspend (String) -> Result<File> = {
+        Result.failure(IllegalStateException("Workspace image loading is unavailable."))
+    },
     interaction: RuntimeNotice? = null,
     interactionBusy: Boolean = false,
     actionsDisabled: Boolean = false,
@@ -1706,6 +1724,7 @@ private fun ToolActivityCard(
                         darkMode = darkMode,
                         workspaceRoot = workspaceRoot,
                         onOpenFile = onOpenFile,
+                        loadWorkspaceImage = loadWorkspaceImage,
                         modifier = Modifier
                             .fillMaxWidth()
                             .clip(RoundedCornerShape(14.dp))
@@ -1789,6 +1808,9 @@ private fun ToolActivityDetailCard(
     darkMode: Boolean,
     workspaceRoot: String?,
     onOpenFile: (String) -> Unit = {},
+    loadWorkspaceImage: suspend (String) -> Result<File> = {
+        Result.failure(IllegalStateException("Workspace image loading is unavailable."))
+    },
     modifier: Modifier = Modifier,
 ) {
     val muted = LocalAAColors.current.muted
@@ -1845,7 +1867,12 @@ private fun ToolActivityDetailCard(
                 }
             }
             TimelineMessageKind.ToolCall -> {
-                ToolCallPreview(message = message, darkMode = darkMode)
+                ToolCallPreview(
+                    message = message,
+                    darkMode = darkMode,
+                    onOpenFile = onOpenFile,
+                    loadWorkspaceImage = loadWorkspaceImage,
+                )
             }
             TimelineMessageKind.AgentCall -> Unit
             TimelineMessageKind.Artifact -> {
@@ -1895,11 +1922,79 @@ internal fun TimelineMessage.toolSummaryTarget(): String {
 }
 
 @Composable
-private fun ToolCallPreview(message: TimelineMessage, darkMode: Boolean) {
+private fun WorkspaceImagePreview(
+    path: String,
+    darkMode: Boolean,
+    onOpenFile: (String) -> Unit,
+    loadWorkspaceImage: suspend (String) -> Result<File>,
+) {
+    val colors = LocalAAColors.current
+    var image by remember(path) { mutableStateOf<File?>(null) }
+    var loading by remember(path) { mutableStateOf(true) }
+    var error by remember(path) { mutableStateOf<String?>(null) }
+    LaunchedEffect(path) {
+        loading = true
+        error = null
+        loadWorkspaceImage(path)
+            .onSuccess { image = it }
+            .onFailure { error = it.message }
+        loading = false
+    }
+    val shape = RoundedCornerShape(10.dp)
+    val loadedImage = image
+    Box(
+        modifier = Modifier
+            .fillMaxWidth()
+            .heightIn(min = 72.dp, max = 300.dp)
+            .clip(shape)
+            .background(if (darkMode) Color(0xFF18181B) else Color(0xFFF5F4F0))
+            .border(1.dp, colors.border, shape)
+            .noRippleClickable { onOpenFile(path) },
+        contentAlignment = Alignment.Center,
+    ) {
+        when {
+            loading -> CircularProgressIndicator(
+                modifier = Modifier.size(22.dp),
+                strokeWidth = 2.dp,
+                color = colors.muted,
+            )
+            loadedImage != null -> AsyncImage(
+                model = Uri.fromFile(loadedImage),
+                contentDescription = path.substringAfterLast('/').substringAfterLast('\\'),
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .heightIn(min = 72.dp, max = 300.dp),
+                contentScale = ContentScale.Fit,
+            )
+            else -> Text(
+                text = error ?: stringResource(R.string.files_open_file_to_preview),
+                color = colors.muted,
+                fontSize = 12.sp,
+                modifier = Modifier.padding(12.dp),
+            )
+        }
+    }
+}
+
+@Composable
+private fun ToolCallPreview(
+    message: TimelineMessage,
+    darkMode: Boolean,
+    onOpenFile: (String) -> Unit,
+    loadWorkspaceImage: suspend (String) -> Result<File>,
+) {
     val input = message.input.ifBlank { message.detail }
     val output = message.output
     val error = message.toolError
     Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+        message.workspaceImages.forEach { path ->
+            WorkspaceImagePreview(
+                path = path,
+                darkMode = darkMode,
+                onOpenFile = onOpenFile,
+                loadWorkspaceImage = loadWorkspaceImage,
+            )
+        }
         if (input.isNotBlank()) {
             CommandPreviewSection(
                 label = stringResource(R.string.session_input),
@@ -1929,7 +2024,7 @@ private fun ToolCallPreview(message: TimelineMessage, darkMode: Boolean) {
 
 private val TimelineMessage.hasToolCallDetail: Boolean
     get() = input.isNotBlank() || output.isNotBlank() || toolError.isNotBlank() ||
-        detail.isNotBlank() || body.isNotBlank()
+        detail.isNotBlank() || body.isNotBlank() || workspaceImages.isNotEmpty()
 
 @Composable
 private fun CommandPreview(command: String, output: String, darkMode: Boolean) {

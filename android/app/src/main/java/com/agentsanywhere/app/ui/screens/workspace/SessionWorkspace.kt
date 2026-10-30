@@ -14,11 +14,15 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.widthIn
+import androidx.compose.foundation.layout.WindowInsets
+import androidx.compose.foundation.layout.statusBars
+import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Icon
@@ -131,17 +135,27 @@ fun WorkspaceEmptyState(
         contentAlignment = Alignment.Center,
     ) {
         if (onToggleSidebar != null) {
-            HeaderIconButton(
-                imageVector = if (sidebarCollapsed) Lucide.ChevronRight else Lucide.ChevronLeft,
-                contentDescription = stringResource(
-                    if (sidebarCollapsed) R.string.workspace_sidebar_expand else R.string.workspace_sidebar_collapse,
-                ),
-                darkMode = LocalAAColors.current.isDark,
-                onClick = onToggleSidebar,
+            // Match SessionDetailHeader exactly: same status-bar inset, 58dp header
+            // height and 18dp horizontal padding, so the button does not jump when a
+            // conversation is opened.
+            Box(
                 modifier = Modifier
                     .align(Alignment.TopStart)
-                    .padding(start = 18.dp, top = 7.dp),
-            )
+                    .fillMaxWidth()
+                    .windowInsetsPadding(WindowInsets.statusBars)
+                    .height(58.dp)
+                    .padding(horizontal = 18.dp),
+                contentAlignment = Alignment.CenterStart,
+            ) {
+                HeaderIconButton(
+                    imageVector = if (sidebarCollapsed) Lucide.ChevronRight else Lucide.ChevronLeft,
+                    contentDescription = stringResource(
+                        if (sidebarCollapsed) R.string.workspace_sidebar_expand else R.string.workspace_sidebar_collapse,
+                    ),
+                    darkMode = LocalAAColors.current.isDark,
+                    onClick = onToggleSidebar,
+                )
+            }
         }
         Column(
             modifier = Modifier

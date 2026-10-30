@@ -1133,6 +1133,16 @@ fun SessionDetailScreen(
         }
     }
 
+    // A prepared session has no runtime snapshot yet. Load its model/effort
+    // catalog as soon as the conversation opens, otherwise the composer shows
+    // “请选择模型” until the user opens the model sheet or sends a message.
+    LaunchedEffect(preparedSession) {
+        if (preparedSession != null) {
+            loadModelCatalog()
+            loadPermissionCatalog()
+        }
+    }
+
     fun updateSelection(scopeName: String, selectionId: String) {
         val id = sessionId ?: return
         if (state.selectionUpdating || state.takeoverInFlight) return
@@ -1954,7 +1964,7 @@ fun SessionDetailScreen(
                                     placeholder = placeholder,
                                     modelLabel = selectedModelLabel,
                                     modelEffortLabel = selectedModelEffortLabel,
-                                    modelLoading = state.catalogs.modelLoading,
+                                    modelLoading = if (isPreparedSession) preparedModelLoading else state.catalogs.modelLoading,
                                     onModelClick = ::openRuntimeSettings,
                                     attachments = if (takeoverEnabled) attachments else emptyList(),
                                     onToggleTakeover = {

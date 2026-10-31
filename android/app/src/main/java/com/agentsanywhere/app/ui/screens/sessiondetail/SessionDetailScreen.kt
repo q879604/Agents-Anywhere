@@ -2725,4 +2725,4 @@ private fun uniqueGalleryFile(directory: File, displayName: String): File {
 }
 
 private const val MAX_ATTACHMENT_FILES = 6
-private const val MAX_ATTACHMENT_BYTES = 25 * 1024 * 1024
+private const val MAX_ATTACHMENT_BYTES = 500 * 1024 * 1024

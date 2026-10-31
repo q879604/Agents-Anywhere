@@ -35,7 +35,7 @@ router = APIRouter(prefix="/sessions", tags=["session-files"])
 
 
 MAX_UPLOAD_FILES_PER_REQUEST = 10
-MAX_UPLOAD_FILE_BYTES = 25 * 1024 * 1024  # 25 MiB
+MAX_UPLOAD_FILE_BYTES = 500 * 1024 * 1024  # 500 MiB
 
 _BACKGROUND_TASKS: set[asyncio.Task[None]] = set()
 

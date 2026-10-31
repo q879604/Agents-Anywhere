@@ -20,7 +20,7 @@ import { attachmentMimeAllowed } from "@/components/session/capabilities"
 import { useTranslations } from "next-intl"
 
 const MAX_ATTACHMENT_FILES = 5
-const MAX_ATTACHMENT_BYTES = 25 * 1024 * 1024
+const MAX_ATTACHMENT_BYTES = 500 * 1024 * 1024
 type AttachmentUploadStatus = "local" | "uploading" | "uploaded" | "failed"
 
 export interface AttachedFile {

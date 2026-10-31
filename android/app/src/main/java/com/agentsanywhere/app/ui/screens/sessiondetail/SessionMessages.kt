@@ -829,35 +829,53 @@ private fun ToolRunGroup(
     val modifier = Modifier.fillMaxWidth().padding(horizontal = 4.dp).readingRegion(header)
 
     if (!expanded) {
-        Row(
-            modifier = modifier
-                .heightIn(min = 34.dp)
-                .clip(RoundedCornerShape(8.dp))
-                .background(surface)
-                .timelineTap(onTap = ::toggleExpanded)
-                .padding(horizontal = 6.dp, vertical = 6.dp),
-            horizontalArrangement = Arrangement.spacedBy(8.dp),
-            verticalAlignment = Alignment.CenterVertically,
+        Column(
+            modifier = modifier,
+            verticalArrangement = Arrangement.spacedBy(8.dp),
         ) {
-            TimelineChevron(expanded = false, tint = muted)
-            Icon(
-                imageVector = Lucide.Hammer,
-                contentDescription = null,
-                tint = if (failed) colors.errorIcon else muted,
-                modifier = Modifier.size(16.dp),
-            )
-            TimelineShimmerText(
-                text = toolRunSummary(messages),
-                active = active,
-                darkMode = darkMode,
-                modifier = Modifier.weight(1f),
-                color = if (failed) LocalAAColors.current.errorIcon else muted,
-                fontSize = 13.sp,
-                fontWeight = FontWeight.Bold,
-                fontFamily = FontFamily.Monospace,
-                maxLines = 1,
-                overflow = TextOverflow.Ellipsis,
-            )
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .heightIn(min = 34.dp)
+                    .clip(RoundedCornerShape(8.dp))
+                    .background(surface)
+                    .timelineTap(onTap = ::toggleExpanded)
+                    .padding(horizontal = 6.dp, vertical = 6.dp),
+                horizontalArrangement = Arrangement.spacedBy(8.dp),
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                TimelineChevron(expanded = false, tint = muted)
+                Icon(
+                    imageVector = Lucide.Hammer,
+                    contentDescription = null,
+                    tint = if (failed) colors.errorIcon else muted,
+                    modifier = Modifier.size(16.dp),
+                )
+                TimelineShimmerText(
+                    text = toolRunSummary(messages),
+                    active = active,
+                    darkMode = darkMode,
+                    modifier = Modifier.weight(1f),
+                    color = if (failed) LocalAAColors.current.errorIcon else muted,
+                    fontSize = 13.sp,
+                    fontWeight = FontWeight.Bold,
+                    fontFamily = FontFamily.Monospace,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis,
+                )
+            }
+            // Attachments produced by collapsed tool calls are content, not
+            // debugging detail: keep a compact preview visible even when the
+            // run is collapsed. This mirrors the desktop attachment card.
+            val images = messages.flatMap { it.workspaceImages }.distinct().take(3)
+            if (images.isNotEmpty()) {
+                WorkspaceImageThumbnailRow(
+                    paths = images,
+                    darkMode = darkMode,
+                    onOpenFile = onOpenFile,
+                    loadWorkspaceImage = loadWorkspaceImage,
+                )
+            }
         }
         return
     }
@@ -1939,6 +1957,65 @@ internal fun TimelineMessage.toolSummaryTarget(): String {
             .joinToString(" ")
     } else {
         subtitle.ifBlank { text }.ifBlank { title }
+    }
+}
+
+@Composable
+private fun WorkspaceImageThumbnailRow(
+    paths: List<String>,
+    darkMode: Boolean,
+    onOpenFile: (String) -> Unit,
+    loadWorkspaceImage: suspend (String) -> Result<File>,
+) {
+    val colors = LocalAAColors.current
+    val shape = RoundedCornerShape(10.dp)
+    Row(
+        modifier = Modifier.fillMaxWidth().padding(horizontal = 2.dp),
+        horizontalArrangement = Arrangement.spacedBy(8.dp),
+    ) {
+        paths.forEach { path ->
+            var image by remember(path) { mutableStateOf<File?>(null) }
+            var loading by remember(path) { mutableStateOf(true) }
+            var error by remember(path) { mutableStateOf<String?>(null) }
+            LaunchedEffect(path) {
+                loading = true
+                error = null
+                loadWorkspaceImage(path)
+                    .onSuccess { image = it }
+                    .onFailure { error = it.message }
+                loading = false
+            }
+            Box(
+                modifier = Modifier
+                    .size(104.dp)
+                    .clip(shape)
+                    .background(if (darkMode) Color(0xFF18181B) else Color(0xFFF5F4F0))
+                    .border(1.dp, colors.border, shape)
+                    .noRippleClickable { onOpenFile(path) },
+                contentAlignment = Alignment.Center,
+            ) {
+                when {
+                    loading -> CircularProgressIndicator(
+                        modifier = Modifier.size(20.dp),
+                        strokeWidth = 2.dp,
+                        color = colors.muted,
+                    )
+                    image != null -> AsyncImage(
+                        model = Uri.fromFile(image),
+                        contentDescription = path.substringAfterLast('/').substringAfterLast('\\'),
+                        modifier = Modifier.fillMaxSize(),
+                        contentScale = ContentScale.Crop,
+                    )
+                    else -> Text(
+                        text = error ?: stringResource(R.string.files_open_file_to_preview),
+                        color = colors.muted,
+                        fontSize = 10.sp,
+                        maxLines = 3,
+                        modifier = Modifier.padding(8.dp),
+                    )
+                }
+            }
+        }
     }
 }
 

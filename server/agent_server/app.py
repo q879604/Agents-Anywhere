@@ -239,7 +239,7 @@ def create_app(
         app.state.redis,
         event_workers=process_settings.event_workers,
         event_threshold_bytes=int(os.getenv("AGENT_SERVER_EVENT_THRESHOLD_BYTES", str(256 * 1024))),
-        event_queue_items=int(os.getenv("AGENT_SERVER_EVENT_QUEUE_ITEMS", "32")),
+        event_queue_items=int(os.getenv("AGENT_SERVER_EVENT_QUEUE_ITEMS", "33")),
         event_queue_bytes=int(os.getenv("AGENT_SERVER_EVENT_QUEUE_BYTES", str(32 * 1024 * 1024))),
     )
     app.state.timeline_write_buffer = TimelineWriteBuffer(
@@ -318,9 +318,9 @@ def create_app(
 
     @app.get(f"{API_V2_PREFIX}/app/latest")
     def app_latest() -> dict[str, object]:
-        version_name = os.environ.get("AGENTS_ANYWHERE_ANDROID_LATEST_VERSION", "2.1.22")
+        version_name = os.environ.get("AGENTS_ANYWHERE_ANDROID_LATEST_VERSION", "2.1.23")
         try:
-            version_code = int(os.environ.get("AGENTS_ANYWHERE_ANDROID_LATEST_CODE", "32"))
+            version_code = int(os.environ.get("AGENTS_ANYWHERE_ANDROID_LATEST_CODE", "33"))
         except ValueError:
             version_code = 31
         return {

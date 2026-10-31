@@ -480,6 +480,20 @@ private fun RemoteTimelineItem.workspaceImagePaths(): List<String> {
     WorkspaceImageFileRegex.findAll(output).forEach { match ->
         match.groupValues.getOrNull(1)?.trim()?.takeIf(::isWorkspaceImagePath)?.let(result::add)
     }
+    // The `present` tool puts its attachments in input.files and returns only
+    // "Presented <path>". Treat those paths as message images too, otherwise
+    // the mobile timeline hides an attachment that the desktop UI renders.
+    content.optJSONObject("input")
+        ?.optJSONArray("files")
+        ?.let { files ->
+            for (index in 0 until files.length()) {
+                files.optJSONObject(index)
+                    ?.optString("path")
+                    ?.trim()
+                    ?.takeIf(::isWorkspaceImagePath)
+                    ?.let(result::add)
+            }
+        }
     return result.toList()
 }
 

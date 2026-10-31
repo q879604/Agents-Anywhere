@@ -33,6 +33,7 @@ import androidx.compose.material3.pulltorefresh.rememberPullToRefreshState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
@@ -147,6 +148,25 @@ fun HomeScreen(
     var projectActionMenu by remember { mutableStateOf<HomeProjectActionMenu?>(null) }
     val projectPreferences = rememberHomeProjectPreferences(serverUrl, userId)
     val projectSessionStatus = projectPreferences.sessionStatus
+    var searchOpen by rememberSaveable(serverUrl, userId) { mutableStateOf(false) }
+    val searchPreferences = remember(context, serverUrl, userId) {
+        context.getSharedPreferences("home_search_history", android.content.Context.MODE_PRIVATE)
+    }
+    val searchHistoryKey = remember(serverUrl, userId) { "history_${serverUrl.hashCode()}_$userId" }
+    var recentSearches by remember(searchPreferences, searchHistoryKey) {
+        mutableStateOf(
+            searchPreferences.getString(searchHistoryKey, "").orEmpty()
+                .split('\u001F')
+                .filter(String::isNotBlank),
+        )
+    }
+    fun recordSearch(value: String) {
+        val next = (listOf(value.trim()) + recentSearches.filterNot { it.equals(value.trim(), ignoreCase = true) })
+            .filter(String::isNotBlank)
+            .take(8)
+        recentSearches = next
+        searchPreferences.edit().putString(searchHistoryKey, next.joinToString("\u001F")).apply()
+    }
     val loadingProjectIds = loadingProjectRequests.filter { it.archived in projectSessionStatus.archiveStates }.mapTo(mutableSetOf()) { it.projectId }
     val projectErrors = projectSessionErrors.filterKeys { it.archived in projectSessionStatus.archiveStates }
         .entries.associate { it.key.projectId to it.value }
@@ -219,7 +239,7 @@ fun HomeScreen(
                 onLoadMore = onLoadMore,
                 onTabSelected = onTabSelected,
                 onProfile = { onProfileOpenChange(true) },
-                onSearch = { showToast(context.getString(R.string.home_search_coming_soon)) },
+                onSearch = { searchOpen = true },
                 onSessionLongPress = { session, bounds ->
                     actionMenu = HomeSessionActionMenu(
                         session = session,
@@ -243,6 +263,33 @@ fun HomeScreen(
                 onPairDevice = onPairDevice,
                 compact = compact,
             )
+            if (searchOpen) {
+                HomeSearchOverlay(
+                    state = state,
+                    projectSessionsById = projectSessionsById,
+                    recentSearches = recentSearches,
+                    onDismiss = { searchOpen = false },
+                    onQueryCommitted = ::recordSearch,
+                    onClearHistory = {
+                        recentSearches = emptyList()
+                        searchPreferences.edit().remove(searchHistoryKey).apply()
+                    },
+                    onOpenSession = {
+                        searchOpen = false
+                        onOpenSession(it)
+                    },
+                    onOpenProject = { project ->
+                        searchOpen = false
+                        onSidebarViewModeChange(HomeSidebarViewMode.Project)
+                        projectPreferences.setProjectExpanded(project.id, true)
+                        onLoadProjectSessions(project.id, projectSessionStatus)
+                    },
+                    onOpenDevice = {
+                        searchOpen = false
+                        onOpenDevice(it)
+                    },
+                )
+            }
             actionMenu?.let { menu ->
                 HomeSessionActionOverlay(
                     menu = menu,

@@ -80,6 +80,19 @@
     <string name="qr_waiting">Waiting for web confirmation...</string>
 
     <string name="home_search_coming_soon">Search is coming soon.</string>
+    <string name="home_search_hint">Search sessions, projects, devices</string>
+    <string name="home_search_clear">Clear search</string>
+    <string name="home_search_recent">Recent searches</string>
+    <string name="home_search_clear_history">Clear</string>
+    <string name="home_search_start_title">Search your workspace</string>
+    <string name="home_search_start_body">Find sessions, projects, and devices.</string>
+    <string name="home_search_sessions">Sessions</string>
+    <string name="home_search_projects">Projects</string>
+    <string name="home_search_devices">Devices</string>
+    <string name="home_search_no_results_title">No results</string>
+    <string name="home_search_no_results_body">Nothing matched “%1$s”.</string>
+    <string name="home_search_online">Online</string>
+    <string name="home_search_offline">Offline</string>
     <string name="home_session_pinned">Session pinned.</string>
     <string name="home_session_unpinned">Session unpinned.</string>
     <string name="home_pin_update_failed">Could not update pin state.</string>

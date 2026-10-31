@@ -7,6 +7,7 @@ import org.json.JSONObject
 data class AndroidAppRelease(
     val versionName: String,
     val downloadUrl: String,
+    val manualDownloadOnly: Boolean = false,
 )
 
 class AppUpdatesApi(private val client: ApiClient = ApiClient()) {
@@ -39,7 +40,13 @@ class AppUpdatesApi(private val client: ApiClient = ApiClient()) {
         if (versionName.isBlank() || downloadUrl.isBlank()) return null
         val comparison = compareUpdateVersions(versionName, currentVersionName) ?: return null
         if (comparison <= 0) return null
-        return AndroidAppRelease(versionName = versionName, downloadUrl = downloadUrl)
+        // The server fallback is a check-only path. It must never become an
+        // APK distribution endpoint; the user is sent to the public repository.
+        return AndroidAppRelease(
+            versionName = versionName,
+            downloadUrl = AppConfig.REPOSITORY_RELEASES_URL,
+            manualDownloadOnly = true,
+        )
     }
 
     private fun personalRelease(currentVersionName: String): AndroidAppRelease? {

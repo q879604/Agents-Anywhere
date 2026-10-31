@@ -318,9 +318,9 @@ def create_app(
 
     @app.get(f"{API_V2_PREFIX}/app/latest")
     def app_latest() -> dict[str, object]:
-        version_name = os.environ.get("AGENTS_ANYWHERE_ANDROID_LATEST_VERSION", "2.1.21")
+        version_name = os.environ.get("AGENTS_ANYWHERE_ANDROID_LATEST_VERSION", "2.1.22")
         try:
-            version_code = int(os.environ.get("AGENTS_ANYWHERE_ANDROID_LATEST_CODE", "31"))
+            version_code = int(os.environ.get("AGENTS_ANYWHERE_ANDROID_LATEST_CODE", "32"))
         except ValueError:
             version_code = 31
         return {
@@ -328,8 +328,9 @@ def create_app(
             "versionCode": version_code,
             "downloadUrl": os.environ.get(
                 "AGENTS_ANYWHERE_ANDROID_DOWNLOAD_URL",
-                f"https://github.com/q879604/Agents-Anywhere/releases/latest/download/AgentsAnywhere-{version_name}-release.apk",
+                "https://github.com/q879604/Agents-Anywhere/releases/latest",
             ),
+            "manualDownloadOnly": True,
             "sha256": os.environ.get("AGENTS_ANYWHERE_ANDROID_SHA256", ""),
         }
 

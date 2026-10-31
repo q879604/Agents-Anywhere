@@ -82,7 +82,11 @@ fun AppUpdatePromptDialog(
                 )
             } else {
                 Text(
-                    text = stringResource(R.string.update_available_message, release.versionName),
+                    text = stringResource(
+                        if (release.manualDownloadOnly) R.string.update_available_message_manual
+                        else R.string.update_available_message,
+                        release.versionName,
+                    ),
                     color = colors.muted,
                     fontSize = 14.sp,
                     fontWeight = FontWeight.Medium,
@@ -117,7 +121,10 @@ fun AppUpdatePromptDialog(
                     onClick = onIgnore,
                 )
                 UpdateDialogButton(
-                    label = stringResource(R.string.update_now),
+                    label = stringResource(
+                        if (release.manualDownloadOnly) R.string.update_open_repository
+                        else R.string.update_now,
+                    ),
                     primary = true,
                     enabled = !busy,
                     modifier = Modifier.weight(1f),

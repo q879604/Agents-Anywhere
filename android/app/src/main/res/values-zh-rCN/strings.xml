@@ -641,6 +641,8 @@
     <string name="update_available_title">发现新版本</string>
     <string name="update_new_version_badge">有新版本</string>
     <string name="update_available_message">新版本 v%1$s 已可用，建议更新以保持服务兼容。继续使用旧版本可能导致部分功能无法使用。</string>
+    <string name="update_available_message_manual">发现新版本 v%1$s。本次检查来自自建服务端，不能在这里直接下载安装包，请前往 GitHub Releases 下载。</string>
+    <string name="update_open_repository">前往仓库下载</string>
     <string name="update_ignore_version">忽略此版本</string>
     <string name="update_ignore_failed">无法保存忽略记录，请重试。</string>
     <string name="update_download_unavailable">更新下载暂未开放，请稍后再试。</string>

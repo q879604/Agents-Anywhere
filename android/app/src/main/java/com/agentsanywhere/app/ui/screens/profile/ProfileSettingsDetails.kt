@@ -256,7 +256,11 @@ internal fun UpdateDetailPage(
                     AppUpdateDownloadProgress(state = state)
                 } else if (!state.preparingInstall) {
                     Text(
-                        text = stringResource(R.string.update_available_message, release.versionName),
+                        text = stringResource(
+                            if (release.manualDownloadOnly) R.string.update_available_message_manual
+                            else R.string.update_available_message,
+                            release.versionName,
+                        ),
                         color = colors.muted,
                         fontSize = 14.sp,
                         fontWeight = FontWeight.Medium,
@@ -288,7 +292,13 @@ internal fun UpdateDetailPage(
                         onClick = {},
                     )
                     else -> ProfileDialogButton(
-                        label = stringResource(if (state.downloadFailed) R.string.update_retry else R.string.update_now),
+                        label = stringResource(
+                            when {
+                                release.manualDownloadOnly -> R.string.update_open_repository
+                                state.downloadFailed -> R.string.update_retry
+                                else -> R.string.update_now
+                            },
+                        ),
                         primary = true,
                         enabled = true,
                         modifier = Modifier.fillMaxWidth(),

@@ -643,6 +643,8 @@
     <string name="update_available_title">New version available</string>
     <string name="update_new_version_badge">New version</string>
     <string name="update_available_message">Version v%1$s is available. Update to stay compatible with the service. Some features may stop working on older versions.</string>
+    <string name="update_available_message_manual">Version v%1$s is available. This check came from your self-hosted server, so the APK cannot be downloaded here. Open GitHub Releases to download it.</string>
+    <string name="update_open_repository">Open GitHub Releases</string>
     <string name="update_ignore_version">Ignore this version</string>
     <string name="update_ignore_failed">Unable to save your preference. Please try again.</string>
     <string name="update_download_unavailable">The update download is not available yet. Please try again later.</string>

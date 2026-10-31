@@ -2,6 +2,8 @@ package com.agentsanywhere.app.feature.update
 
 import android.app.Application
 import android.content.Context
+import android.content.Intent
+import android.net.Uri
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
@@ -177,6 +179,19 @@ class AppUpdateViewModel(application: Application) : AndroidViewModel(applicatio
         val release = state.release ?: return
         if (serverUrl != currentUpdateServer) return
         if (state.downloading || state.installFile != null || state.ignoring) return
+        if (release.manualDownloadOnly) {
+            val opened = runCatching {
+                getApplication<Application>().startActivity(
+                    Intent(Intent.ACTION_VIEW, Uri.parse(release.downloadUrl))
+                        .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK),
+                )
+            }.isSuccess
+            state = state.copy(
+                promptVisible = true,
+                downloadUnavailable = !opened,
+            )
+            return
+        }
         val downloadConfigured = runCatching {
             val url = java.net.URI(release.downloadUrl)
             url.scheme == "https" && url.userInfo == null && url.host?.endsWith(".invalid") == false

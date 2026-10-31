@@ -14,6 +14,7 @@ object AppConfig {
     // releases and therefore cannot advertise Android-only builds.
     const val PERSONAL_UPDATE_MANIFEST_BASE = "https://github.com/q879604/Agents-Anywhere/releases/latest/download"
     const val PERSONAL_UPDATE_MANIFEST_PATH = "/latest.json"
+    const val REPOSITORY_RELEASES_URL = "https://github.com/q879604/Agents-Anywhere/releases/latest"
 
     fun isOfficialServer(serverUrl: String): Boolean {
         val officialOrigin = normalizeServerOrigin(OFFICIAL_SERVER_URL) ?: return false

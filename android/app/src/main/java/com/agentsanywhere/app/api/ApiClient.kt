@@ -72,6 +72,27 @@ class ApiClient(
         )
     }
 
+    /** Fetch a JSON document from an absolute URL, preserving the URL's path.
+     *  Unlike [getJson], this is not relative to the API server origin.
+     */
+    fun getAbsoluteJson(url: String): JSONObject {
+        val request = Request.Builder()
+            .url(url)
+            .header("Accept", "application/json")
+            .build()
+        HttpClientProvider.client.newCall(request).execute().use { response ->
+            val text = response.body?.string().orEmpty()
+            if (!response.isSuccessful) {
+                throw ApiException(
+                    message = parseErrorMessage(text) ?: "Request failed (${response.code}).",
+                    statusCode = response.code,
+                    errorCode = parseErrorCode(text),
+                )
+            }
+            return JSONObject(text)
+        }
+    }
+
     fun postJson(
         serverUrl: String,
         path: String,

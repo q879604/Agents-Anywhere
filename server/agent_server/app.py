@@ -316,6 +316,23 @@ def create_app(
     def health() -> dict[str, str]:
         return {"status": "ok", "version": app.version, "serverTime": utc_now()}
 
+    @app.get(f"{API_V2_PREFIX}/app/latest")
+    def app_latest() -> dict[str, object]:
+        version_name = os.environ.get("AGENTS_ANYWHERE_ANDROID_LATEST_VERSION", "2.1.21")
+        try:
+            version_code = int(os.environ.get("AGENTS_ANYWHERE_ANDROID_LATEST_CODE", "31"))
+        except ValueError:
+            version_code = 31
+        return {
+            "versionName": version_name,
+            "versionCode": version_code,
+            "downloadUrl": os.environ.get(
+                "AGENTS_ANYWHERE_ANDROID_DOWNLOAD_URL",
+                f"https://github.com/q879604/Agents-Anywhere/releases/latest/download/AgentsAnywhere-{version_name}-release.apk",
+            ),
+            "sha256": os.environ.get("AGENTS_ANYWHERE_ANDROID_SHA256", ""),
+        }
+
     @app.get(f"{API_V2_PREFIX}/health/ready")
     async def readiness() -> JSONResponse:
         checks: dict[str, dict[str, str]] = {}

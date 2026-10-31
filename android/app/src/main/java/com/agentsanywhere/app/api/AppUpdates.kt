@@ -12,6 +12,7 @@ data class AndroidAppRelease(
 class AppUpdatesApi(private val client: ApiClient = ApiClient()) {
     fun check(serverUrl: String, currentVersionName: String): AndroidAppRelease? {
         personalRelease(currentVersionName)?.let { return it }
+        serverRelease(serverUrl, currentVersionName)?.let { return it }
         val payload = client.getJson(
             serverUrl = serverUrl,
             path = "/health",
@@ -25,6 +26,20 @@ class AppUpdatesApi(private val client: ApiClient = ApiClient()) {
             versionName = latestVersion,
             downloadUrl = AppConfig.UPDATE_DOWNLOAD_URL,
         )
+    }
+
+    private fun serverRelease(serverUrl: String, currentVersionName: String): AndroidAppRelease? {
+        // GitHub Releases may be unreachable on some mobile networks. The
+        // authenticated self-hosted server exposes the same tiny manifest so
+        // update checks still work without a third-party network dependency.
+        val payload = runCatching { client.getJson(serverUrl, "/app/latest") }.getOrNull()
+            ?: return null
+        val versionName = payload.optString("versionName").trim()
+        val downloadUrl = payload.optString("downloadUrl").trim()
+        if (versionName.isBlank() || downloadUrl.isBlank()) return null
+        val comparison = compareUpdateVersions(versionName, currentVersionName) ?: return null
+        if (comparison <= 0) return null
+        return AndroidAppRelease(versionName = versionName, downloadUrl = downloadUrl)
     }
 
     private fun personalRelease(currentVersionName: String): AndroidAppRelease? {

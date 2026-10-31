@@ -9,6 +9,11 @@ object AppConfig {
     const val DESKTOP_DOWNLOAD_URL = "https://agents-anywhere.com/download"
     // The official site redirects this to the latest release APK.
     const val UPDATE_DOWNLOAD_URL = "https://www.agents-anywhere.com/api/download/android/latest?from=update"
+    // Personal fork build: a small manifest shipped as a GitHub Release asset is checked
+    // before the server version. The official server is still on 2.x server
+    // releases and therefore cannot advertise Android-only builds.
+    const val PERSONAL_UPDATE_MANIFEST_BASE = "https://github.com/q879604/Agents-Anywhere/releases/latest/download"
+    const val PERSONAL_UPDATE_MANIFEST_PATH = "/latest.json"
 
     fun isOfficialServer(serverUrl: String): Boolean {
         val officialOrigin = normalizeServerOrigin(OFFICIAL_SERVER_URL) ?: return false

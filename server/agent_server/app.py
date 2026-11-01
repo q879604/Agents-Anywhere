@@ -33,6 +33,7 @@ from agent_server.api import (
     oauth,
     pairing,
     projects,
+    search,
     service,
     sessions,
     sessions_fs,
@@ -318,9 +319,9 @@ def create_app(
 
     @app.get(f"{API_V2_PREFIX}/app/latest")
     def app_latest() -> dict[str, object]:
-        version_name = os.environ.get("AGENTS_ANYWHERE_ANDROID_LATEST_VERSION", "2.1.24")
+        version_name = os.environ.get("AGENTS_ANYWHERE_ANDROID_LATEST_VERSION", "2.1.25")
         try:
-            version_code = int(os.environ.get("AGENTS_ANYWHERE_ANDROID_LATEST_CODE", "34"))
+            version_code = int(os.environ.get("AGENTS_ANYWHERE_ANDROID_LATEST_CODE", "35"))
         except ValueError:
             version_code = 31
         return {
@@ -395,6 +396,7 @@ def create_app(
     app.include_router(agents.router, prefix=API_V2_PREFIX)
     app.include_router(pairing.router, prefix=API_V2_PREFIX)
     app.include_router(projects.router, prefix=API_V2_PREFIX)
+    app.include_router(search.router, prefix=API_V2_PREFIX)
     app.include_router(sessions.router, prefix=API_V2_PREFIX)
     app.include_router(sessions_fs.router, prefix=API_V2_PREFIX)
     app.include_router(sessions_terminal.router, prefix=API_V2_PREFIX)

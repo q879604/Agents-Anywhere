@@ -139,6 +139,36 @@ class SessionsApi(
         )
     }
 
+    fun searchSessions(
+        serverUrl: String,
+        authorizationToken: String,
+        query: String,
+        deviceId: String? = null,
+        workspace: String? = null,
+        limit: Int = 30,
+    ): List<SessionSearchHit> {
+        val path = buildString {
+            append("/search?q=")
+            append(query.urlEncode())
+            append("&limit=")
+            append(limit)
+            deviceId?.takeIf(String::isNotBlank)?.let {
+                append("&deviceId=")
+                append(it.urlEncode())
+            }
+            workspace?.takeIf(String::isNotBlank)?.let {
+                append("&workspace=")
+                append(it.urlEncode())
+            }
+        }
+        val response = client.getJson(
+            serverUrl = serverUrl,
+            path = path,
+            authorizationToken = authorizationToken,
+        )
+        return response.optJSONArray("results").toObjectList { toSessionSearchHit() }
+    }
+
     fun createAndStartSession(
         serverUrl: String,
         authorizationToken: String,

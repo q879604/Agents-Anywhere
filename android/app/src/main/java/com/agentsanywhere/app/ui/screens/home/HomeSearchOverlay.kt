@@ -18,6 +18,9 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.statusBars
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.widthIn
+import androidx.compose.foundation.horizontalScroll
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
@@ -26,6 +29,9 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.BasicTextField
 import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
+import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.DropdownMenu
+import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.Icon
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
@@ -35,6 +41,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
+import kotlinx.coroutines.delay
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -56,6 +63,7 @@ import androidx.compose.ui.unit.sp
 import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
 import com.agentsanywhere.app.R
+import com.agentsanywhere.app.api.SessionSearchHit
 import com.agentsanywhere.app.feature.sessions.SessionsState
 import com.agentsanywhere.app.model.AgentDevice
 import com.agentsanywhere.app.model.AgentProject
@@ -63,6 +71,7 @@ import com.agentsanywhere.app.model.AgentSession
 import com.agentsanywhere.app.ui.designsystem.LocalAAColors
 import com.agentsanywhere.app.ui.designsystem.noRippleClickable
 import com.composables.icons.lucide.ChevronLeft
+import com.composables.icons.lucide.ChevronDown
 import com.composables.icons.lucide.ChevronRight
 import com.composables.icons.lucide.Clock3
 import com.composables.icons.lucide.Folder
@@ -70,6 +79,8 @@ import com.composables.icons.lucide.Lucide
 import com.composables.icons.lucide.Monitor
 import com.composables.icons.lucide.Search
 import com.composables.icons.lucide.X
+
+private data class WorkspaceOption(val path: String, val label: String)
 
 private data class HomeSearchResults(
     val sessions: List<AgentSession>,
@@ -88,8 +99,10 @@ internal fun HomeSearchOverlay(
     onQueryCommitted: (String) -> Unit,
     onClearHistory: () -> Unit,
     onOpenSession: (AgentSession) -> Unit,
+    onOpenSessionById: (String) -> Unit,
     onOpenProject: (AgentProject) -> Unit,
     onOpenDevice: (AgentDevice) -> Unit,
+    onSearchSessions: suspend (String, String?, String?) -> Result<List<SessionSearchHit>>,
 ) {
     val colors = LocalAAColors.current
     val focusRequester = remember { FocusRequester() }
@@ -97,6 +110,12 @@ internal fun HomeSearchOverlay(
     val keyboard = LocalSoftwareKeyboardController.current
     var query by remember { mutableStateOf("") }
     var submittedQuery by remember { mutableStateOf("") }
+    var fullText by remember { mutableStateOf(false) }
+    var selectedDeviceId by remember { mutableStateOf<String?>(null) }
+    var selectedWorkspace by remember { mutableStateOf<String?>(null) }
+    var fullTextResults by remember { mutableStateOf<List<SessionSearchHit>>(emptyList()) }
+    var fullTextLoading by remember { mutableStateOf(false) }
+    var fullTextError by remember { mutableStateOf(false) }
 
     LaunchedEffect(Unit) {
         focusRequester.requestFocus()
@@ -114,8 +133,57 @@ internal fun HomeSearchOverlay(
         onOpenSession(session)
     }
 
-    val results = remember(submittedQuery, state.sessions, state.archivedSessions, state.projects, state.devices, projectSessionsById) {
-        buildHomeSearchResults(submittedQuery, state, projectSessionsById)
+    val loadedSessions = remember(projectSessionsById, state.sessions, state.archivedSessions) {
+        (projectSessionsById.values.flatten() + state.sessions + state.archivedSessions)
+            .associateBy(AgentSession::id)
+            .values
+            .toList()
+    }
+    val workspaceOptions = remember(state.projects, loadedSessions) {
+        val fromProjects = state.projects.mapNotNull { project ->
+            project.workspacePath.takeIf(String::isNotBlank)?.let { WorkspaceOption(it, project.name) }
+        }
+        val fromSessions = loadedSessions.mapNotNull { session ->
+            session.cwd?.takeIf(String::isNotBlank)?.let { path ->
+                WorkspaceOption(
+                    path = path,
+                    label = session.workspaceLabel.ifBlank { path.substringAfterLast('/').ifBlank { path } },
+                )
+            }
+        }
+        (fromProjects + fromSessions).distinctBy { it.path }.take(40)
+    }
+    val results = remember(
+        submittedQuery,
+        state.sessions,
+        state.archivedSessions,
+        state.projects,
+        state.devices,
+        projectSessionsById,
+        selectedDeviceId,
+        selectedWorkspace,
+    ) {
+        buildHomeSearchResults(submittedQuery, state, projectSessionsById, selectedDeviceId, selectedWorkspace)
+    }
+    LaunchedEffect(submittedQuery, fullText, selectedDeviceId, selectedWorkspace) {
+        if (!fullText || submittedQuery.isBlank()) {
+            fullTextResults = emptyList()
+            fullTextLoading = false
+            fullTextError = false
+            return@LaunchedEffect
+        }
+        fullTextLoading = true
+        fullTextError = false
+        delay(320)
+        val result = onSearchSessions(submittedQuery, selectedDeviceId, selectedWorkspace)
+        result.onSuccess {
+            fullTextResults = it
+            fullTextError = false
+        }.onFailure {
+            fullTextResults = emptyList()
+            fullTextError = true
+        }
+        fullTextLoading = false
     }
 
     Dialog(
@@ -213,6 +281,16 @@ internal fun HomeSearchOverlay(
                         }
                     }
                 }
+                SearchFilterBar(
+                    devices = state.devices,
+                    workspaces = workspaceOptions,
+                    selectedDeviceId = selectedDeviceId,
+                    selectedWorkspace = selectedWorkspace,
+                    fullText = fullText,
+                    onDeviceSelected = { selectedDeviceId = it },
+                    onWorkspaceSelected = { selectedWorkspace = it },
+                    onFullTextChanged = { fullText = it },
+                )
                 Box(Modifier.fillMaxWidth().height(1.dp).background(colors.border))
                 if (submittedQuery.isBlank()) {
                     RecentSearchContent(
@@ -222,6 +300,17 @@ internal fun HomeSearchOverlay(
                             submittedQuery = it
                         },
                         onClear = onClearHistory,
+                    )
+                } else if (fullText) {
+                    FullTextSearchContent(
+                        hits = fullTextResults,
+                        query = submittedQuery,
+                        loading = fullTextLoading,
+                        failed = fullTextError,
+                        onOpenSession = {
+                            commitSearch()
+                            onOpenSessionById(it.sessionId)
+                        },
                     )
                 } else if (results.isEmpty) {
                     NoSearchResults(query = submittedQuery)
@@ -243,6 +332,232 @@ internal fun HomeSearchOverlay(
                 }
             }
         }
+    }
+}
+
+@Composable
+private fun SearchFilterBar(
+    devices: List<AgentDevice>,
+    workspaces: List<WorkspaceOption>,
+    selectedDeviceId: String?,
+    selectedWorkspace: String?,
+    fullText: Boolean,
+    onDeviceSelected: (String?) -> Unit,
+    onWorkspaceSelected: (String?) -> Unit,
+    onFullTextChanged: (Boolean) -> Unit,
+) {
+    val colors = LocalAAColors.current
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .horizontalScroll(rememberScrollState())
+            .padding(horizontal = 14.dp, vertical = 8.dp),
+        horizontalArrangement = Arrangement.spacedBy(8.dp),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        FilterMenuButton(
+            label = devices.firstOrNull { it.id == selectedDeviceId }?.name
+                ?: stringResource(R.string.home_search_all_devices),
+            selected = selectedDeviceId != null,
+            items = listOf(null to stringResource(R.string.home_search_all_devices)) +
+                devices.map { it.id to it.name },
+            onSelect = onDeviceSelected,
+        )
+        FilterMenuButton(
+            label = workspaces.firstOrNull { it.path == selectedWorkspace }?.label
+                ?: stringResource(R.string.home_search_all_workspaces),
+            selected = selectedWorkspace != null,
+            items = listOf(null to stringResource(R.string.home_search_all_workspaces)) +
+                workspaces.map { it.path to it.label },
+            onSelect = onWorkspaceSelected,
+        )
+        Row(
+            modifier = Modifier
+                .height(34.dp)
+                .clip(RoundedCornerShape(10.dp))
+                .background(if (fullText) colors.primaryAction.copy(alpha = 0.16f) else colors.raisedSurface)
+                .border(1.dp, if (fullText) colors.primaryAction.copy(alpha = 0.5f) else colors.border, RoundedCornerShape(10.dp))
+                .noRippleClickable { onFullTextChanged(!fullText) }
+                .padding(horizontal = 11.dp),
+            horizontalArrangement = Arrangement.spacedBy(6.dp),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            Icon(
+                imageVector = Lucide.Search,
+                contentDescription = null,
+                tint = if (fullText) colors.primaryAction else colors.muted,
+                modifier = Modifier.size(15.dp),
+            )
+            Text(
+                text = stringResource(R.string.home_search_all_text),
+                color = if (fullText) colors.primaryAction else colors.ink,
+                fontSize = 12.sp,
+                fontWeight = FontWeight.SemiBold,
+            )
+        }
+    }
+}
+
+@Composable
+private fun FilterMenuButton(
+    label: String,
+    selected: Boolean,
+    items: List<Pair<String?, String>>,
+    onSelect: (String?) -> Unit,
+) {
+    val colors = LocalAAColors.current
+    var expanded by remember { mutableStateOf(false) }
+    Box {
+        Row(
+            modifier = Modifier
+                .height(34.dp)
+                .widthIn(max = 190.dp)
+                .clip(RoundedCornerShape(10.dp))
+                .background(if (selected) colors.primaryAction.copy(alpha = 0.14f) else colors.raisedSurface)
+                .border(1.dp, if (selected) colors.primaryAction.copy(alpha = 0.42f) else colors.border, RoundedCornerShape(10.dp))
+                .noRippleClickable { expanded = true }
+                .padding(horizontal = 11.dp),
+            horizontalArrangement = Arrangement.spacedBy(6.dp),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            Text(
+                text = label,
+                modifier = Modifier.weight(1f, fill = false),
+                color = if (selected) colors.primaryAction else colors.ink,
+                fontSize = 12.sp,
+                fontWeight = FontWeight.Medium,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis,
+            )
+            Icon(
+                imageVector = Lucide.ChevronDown,
+                contentDescription = null,
+                tint = colors.muted,
+                modifier = Modifier.size(14.dp),
+            )
+        }
+        DropdownMenu(expanded = expanded, onDismissRequest = { expanded = false }) {
+            items.forEach { (value, text) ->
+                DropdownMenuItem(
+                    text = {
+                        Text(
+                            text = text,
+                            color = if (value == null) colors.muted else colors.ink,
+                            fontSize = 13.sp,
+                            maxLines = 1,
+                            overflow = TextOverflow.Ellipsis,
+                        )
+                    },
+                    onClick = {
+                        expanded = false
+                        onSelect(value)
+                    },
+                )
+            }
+        }
+    }
+}
+
+@Composable
+private fun FullTextSearchContent(
+    hits: List<SessionSearchHit>,
+    query: String,
+    loading: Boolean,
+    failed: Boolean,
+    onOpenSession: (SessionSearchHit) -> Unit,
+) {
+    val colors = LocalAAColors.current
+    if (loading) {
+        Box(Modifier.fillMaxSize().padding(top = 80.dp), contentAlignment = Alignment.TopCenter) {
+            CircularProgressIndicator(modifier = Modifier.size(24.dp), strokeWidth = 2.dp, color = colors.primaryAction)
+        }
+        return
+    }
+    if (failed) {
+        Column(
+            modifier = Modifier.fillMaxSize().padding(horizontal = 32.dp, vertical = 80.dp),
+            horizontalAlignment = Alignment.CenterHorizontally,
+            verticalArrangement = Arrangement.spacedBy(8.dp),
+        ) {
+            Text(
+                text = stringResource(R.string.home_search_full_text_failed),
+                color = colors.ink,
+                fontSize = 15.sp,
+                fontWeight = FontWeight.Medium,
+            )
+        }
+        return
+    }
+    if (hits.isEmpty()) {
+        NoSearchResults(query = query)
+        return
+    }
+    LazyColumn(
+        modifier = Modifier.fillMaxSize().padding(horizontal = 14.dp),
+        verticalArrangement = Arrangement.spacedBy(2.dp),
+    ) {
+        item(key = "header:full") {
+            SearchSectionHeader(stringResource(R.string.home_search_full_text_results), hits.size)
+        }
+        items(hits, key = { "full:${it.sessionId}" }) { hit ->
+            SessionSearchHitRow(hit = hit, query = query, onClick = { onOpenSession(hit) })
+        }
+        item(key = "bottom-space") { Spacer(Modifier.height(28.dp)) }
+    }
+}
+
+@Composable
+private fun SessionSearchHitRow(hit: SessionSearchHit, query: String, onClick: () -> Unit) {
+    val colors = LocalAAColors.current
+    val context = listOfNotNull(hit.projectName, hit.deviceName, hit.cwd)
+        .filter(String::isNotBlank)
+        .joinToString(" · ")
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .heightIn(min = 72.dp)
+            .clip(RoundedCornerShape(14.dp))
+            .noRippleClickable(onClick = onClick)
+            .padding(horizontal = 10.dp, vertical = 9.dp),
+        horizontalArrangement = Arrangement.spacedBy(12.dp),
+        verticalAlignment = Alignment.Top,
+    ) {
+        Box(
+            modifier = Modifier
+                .size(36.dp)
+                .clip(RoundedCornerShape(11.dp))
+                .background(colors.subtle),
+            contentAlignment = Alignment.Center,
+        ) {
+            Icon(Lucide.Search, null, tint = colors.muted, modifier = Modifier.size(18.dp))
+        }
+        Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(3.dp)) {
+            HighlightedSearchText(
+                text = hit.title.ifBlank { hit.cwd.orEmpty() },
+                query = query,
+                color = colors.ink,
+                fontSize = 14.sp,
+                fontWeight = FontWeight.SemiBold,
+            )
+            HighlightedSearchText(
+                text = hit.snippet,
+                query = query,
+                color = colors.muted,
+                fontSize = 12.sp,
+                fontWeight = FontWeight.Normal,
+                maxLines = 2,
+            )
+            if (context.isNotBlank()) {
+                Text(
+                    text = context,
+                    color = colors.muted.copy(alpha = 0.8f),
+                    fontSize = 11.sp,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis,
+                )
+            }
+        }
+        Icon(Lucide.ChevronRight, null, tint = colors.muted.copy(alpha = 0.7f), modifier = Modifier.size(15.dp))
     }
 }
 
@@ -499,6 +814,7 @@ private fun HighlightedSearchText(
     color: Color,
     fontSize: androidx.compose.ui.unit.TextUnit,
     fontWeight: FontWeight,
+    maxLines: Int = 1,
 ) {
     val colors = LocalAAColors.current
     val start = if (query.isBlank()) -1 else text.indexOf(query, ignoreCase = true)
@@ -519,7 +835,7 @@ private fun HighlightedSearchText(
         color = color,
         fontSize = fontSize,
         fontWeight = fontWeight,
-        maxLines = 1,
+        maxLines = maxLines,
         overflow = TextOverflow.Ellipsis,
     )
 }
@@ -551,12 +867,19 @@ private fun buildHomeSearchResults(
     query: String,
     state: SessionsState,
     projectSessionsById: Map<String, List<AgentSession>>,
+    selectedDeviceId: String? = null,
+    selectedWorkspace: String? = null,
 ): HomeSearchResults {
     val needle = query.trim()
     if (needle.isBlank()) return HomeSearchResults(emptyList(), emptyList(), emptyList())
     val projectNames = state.projects.associate { it.id to it.name }
     val sessions = (state.sessions + state.archivedSessions + projectSessionsById.values.flatten())
         .distinctBy { it.id }
+        .filter { session ->
+            (selectedDeviceId == null || session.connectorId == selectedDeviceId) &&
+                (selectedWorkspace == null || session.cwd == selectedWorkspace ||
+                    session.cwd.orEmpty().startsWith(selectedWorkspace.trimEnd('/') + "/"))
+        }
         .mapNotNull { session ->
             val title = session.title
             val projectName = session.projectId?.let(projectNames::get).orEmpty()
@@ -582,10 +905,12 @@ private fun buildHomeSearchResults(
         .map { it.second }
         .take(24)
     val projects = state.projects
+        .filter { selectedWorkspace == null || it.workspacePath == selectedWorkspace }
         .filter { it.name.contains(needle, ignoreCase = true) || it.workspacePath.contains(needle, ignoreCase = true) }
         .sortedWith(compareBy<AgentProject> { if (it.name.startsWith(needle, ignoreCase = true)) 0 else 1 }.thenByDescending { it.pinned })
         .take(8)
     val devices = state.devices
+        .filter { selectedDeviceId == null || it.id == selectedDeviceId }
         .filter {
             it.name.contains(needle, ignoreCase = true) ||
                 it.id.contains(needle, ignoreCase = true) ||

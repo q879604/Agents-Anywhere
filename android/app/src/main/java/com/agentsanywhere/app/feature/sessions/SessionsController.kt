@@ -6,6 +6,7 @@ import com.agentsanywhere.app.api.FilesApi
 import com.agentsanywhere.app.api.RemoteInlineAttachmentRef
 import com.agentsanywhere.app.api.RemoteProject
 import com.agentsanywhere.app.api.SessionsApi
+import com.agentsanywhere.app.api.SessionSearchHit
 import com.agentsanywhere.app.api.RemoteDevice
 import com.agentsanywhere.app.api.RemoteSession
 import com.agentsanywhere.app.api.RemoteSessionCreateAndStartRequest
@@ -80,6 +81,32 @@ class SessionsController(
             }.recoverCatching { error ->
                 if (error is CancellationException || error is ApiException) throw error
                 throw IllegalStateException(error.message ?: "Could not load sessions.", error)
+            }
+        }
+    }
+
+    suspend fun searchSessions(
+        query: String,
+        deviceId: String? = null,
+        workspace: String? = null,
+    ): Result<List<SessionSearchHit>> {
+        val serverUrl = sessionStore.readServerUrl()
+        val accessToken = sessionStore.readAccessToken()
+        if (serverUrl.isBlank() || accessToken.isBlank() || query.isBlank()) {
+            return Result.success(emptyList())
+        }
+        return withContext(Dispatchers.IO) {
+            runCatching {
+                sessionsApi.searchSessions(
+                    serverUrl = serverUrl,
+                    authorizationToken = accessToken,
+                    query = query,
+                    deviceId = deviceId,
+                    workspace = workspace,
+                )
+            }.recoverCatching { error ->
+                if (error is CancellationException || error is ApiException) throw error
+                throw IllegalStateException(error.message ?: "Search failed.", error)
             }
         }
     }

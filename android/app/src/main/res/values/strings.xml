@@ -747,4 +747,9 @@
     <string name="session_attachment_compress_video">Compress video</string>
     <string name="session_video_compressing">Compressing video…</string>
     <string name="session_video_compress_failed">Could not compress this video. The original is larger than the upload limit.</string>
+    <string name="home_search_all_devices">All devices</string>
+    <string name="home_search_all_workspaces">All workspaces</string>
+    <string name="home_search_all_text">Search all text</string>
+    <string name="home_search_full_text_results">Full-text results</string>
+    <string name="home_search_full_text_failed">Full-text search failed. Check your connection and try again.</string>
 </resources>

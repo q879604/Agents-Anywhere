@@ -582,6 +582,18 @@ fun AgentsAnywhereApp(
                 }
             }
         },
+        onOpenSessionById = { id ->
+            preparedSessionDraft = null
+            selectedSessionId = id
+            destinationName = if (wideLayout) {
+                AppDestination.Sessions.name
+            } else {
+                AppDestination.SessionDetail.name
+            }
+        },
+        onSearchSessions = { query, deviceId, workspace ->
+            sessionsController.searchSessions(query, deviceId, workspace)
+        },
         onOpenDevice = { device ->
             deviceDetailReturnDestinationName = destinationName
             selectedDeviceId = device.id

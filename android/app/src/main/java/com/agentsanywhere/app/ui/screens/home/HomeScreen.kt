@@ -55,6 +55,7 @@ import com.agentsanywhere.app.R
 import com.agentsanywhere.app.api.AuthMeResponse
 import com.agentsanywhere.app.api.ApiException
 import com.agentsanywhere.app.feature.devices.DeviceAgentPreviews
+import com.agentsanywhere.app.api.SessionSearchHit
 import com.agentsanywhere.app.feature.sessions.SessionsState
 import com.agentsanywhere.app.feature.sessions.projectHasVisibleSessions
 import com.agentsanywhere.app.feature.sessions.projectSessionMatchesStatus
@@ -133,7 +134,9 @@ fun HomeScreen(
     onArchiveProjectSessions: suspend (String) -> Result<List<AgentSession>>,
     onNewSessionInProject: (AgentProject) -> Unit,
     onOpenSession: (AgentSession) -> Unit,
+    onOpenSessionById: (String) -> Unit,
     onOpenDevice: (AgentDevice) -> Unit,
+    onSearchSessions: suspend (String, String?, String?) -> Result<List<SessionSearchHit>>,
     deviceAgentPreviews: DeviceAgentPreviews,
     onPairDevice: () -> Unit,
     compact: Boolean = false,
@@ -278,6 +281,11 @@ fun HomeScreen(
                         searchOpen = false
                         onOpenSession(it)
                     },
+                    onOpenSessionById = {
+                        searchOpen = false
+                        onOpenSessionById(it)
+                    },
+                    onSearchSessions = onSearchSessions,
                     onOpenProject = { project ->
                         searchOpen = false
                         onSidebarViewModeChange(HomeSidebarViewMode.Project)
